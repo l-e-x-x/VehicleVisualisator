@@ -15,8 +15,10 @@ import bradley.dupont.odu.edu.vanet.ns3.dto.VehicleLocation;
 import bradley.dupont.odu.edu.vanet.ns3.dto.highway.Highway;
 import bradley.dupont.odu.edu.vanet.ns3.dto.highway.HighwayConnection;
 import bradley.dupont.odu.edu.vanet.ns3.dto.highway.HighwayProject;
+import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Font;
+import java.awt.Stroke;
 import java.awt.geom.Point2D;
 import java.io.File;
 import java.io.FileInputStream;
@@ -28,6 +30,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -60,6 +63,7 @@ public class MainFrame extends javax.swing.JFrame {
     private AtomicInteger speedupFactor;
     final private AtomicBoolean paused;
     private Thread renderThread;
+    File highwayDataFile = null;
 
     /** Creates new form MainFrame */
     public MainFrame() {
@@ -424,24 +428,37 @@ public class MainFrame extends javax.swing.JFrame {
     }//GEN-LAST:event_simTimeFieldActionPerformed
 
     private void loadHighwayDataMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_loadHighwayDataMenuItemActionPerformed
-        /*JFileChooser chooser = new JFileChooser();
-        chooser.setCurrentDirectory(new File("."));
+        JFileChooser chooser = new JFileChooser();
+        if (highwayDataFile != null)
+            chooser.setCurrentDirectory(highwayDataFile);
+        else
+            chooser.setCurrentDirectory(new File("."));
         int result = chooser.showOpenDialog(this);
         if (result != JFileChooser.APPROVE_OPTION) {
             return;
         }
-        File selectedFile = chooser.getSelectedFile();*/
-        File selectedFile = new File("/home/lexx/HighwayToHell_debug.xml");
-
+        File selectedFile = chooser.getSelectedFile();
+        highwayDataFile = selectedFile;
         try {
+                /*Удаляем все аннотации (подписи), если они есть*/
+            XYTextAnnotation xytextannotation = null;
+            while (!prevChart.getXYPlot().getAnnotations().isEmpty())
+                prevChart.getXYPlot().removeAnnotation((XYTextAnnotation)prevChart.getXYPlot().getAnnotations().get(0));
+                /*парсим XML - создаем проект HighwayProject proj*/
             HighwayProject proj = (HighwayProject) HighwayProject.xs.fromXML(new FileInputStream(selectedFile));
             DefaultXYDataset xyd = (DefaultXYDataset) prevChart.getXYPlot().getDataset();
-            XYTextAnnotation xytextannotation = null;
-            Font font = new Font("SansSerif", 0, 7);
-            while (xyd.getSeriesCount() != 0) {
+
+            Font font = new Font("SansSerif", 0, 8);
+            while (xyd.getSeriesCount() != 0) // removing series
                 xyd.removeSeries(xyd.getSeriesKey(0));
-            }
-            for (Highway aHighway : proj.getHighways()) {
+
+
+            int seriesCounter=0; // счетчик серий
+            Random rand = new Random();
+
+            for (Highway aHighway : proj.getHighways())
+            {
+                Color colorOfSameSeries=Color.getHSBColor(rand.nextFloat(), 1.0f, 0.7f);
                 double[][] series = new double[2][2];
                 series[0][0] = aHighway.getStartX();
                 series[1][0] = aHighway.getStartY();
@@ -465,22 +482,25 @@ public class MainFrame extends javax.swing.JFrame {
                 series[1][1] = aHighway.getStartY() + changeY;
 
                     /*Annotation add*/
-                String annotationStr = "HW #" + aHighway.getHighwayId();
+                String annotationStr = "#" + aHighway.getHighwayId();
                 double annotationX = aHighway.getStartX() + changeX/4;
                 double annotationY = aHighway.getStartY() + changeY/4;
                 xytextannotation = new XYTextAnnotation(annotationStr, annotationX,annotationY);
-                xytextannotation.setBackgroundPaint(Color.WHITE);
+                xytextannotation.setPaint(Color.WHITE);
+                xytextannotation.setBackgroundPaint(Color.BLACK);
                 xytextannotation.setFont(font);
 		xytextannotation.setTextAnchor(TextAnchor.HALF_ASCENT_LEFT);
-		
+		prevChart.getXYPlot().addAnnotation(xytextannotation);
+                    /*Series add*/
                 xyd.addSeries(annotationStr, series);
-                prevChart.getXYPlot().addAnnotation(xytextannotation);
-
+                prevChart.getXYPlot().getRenderer().setSeriesPaint(seriesCounter, colorOfSameSeries);
+                prevChart.getXYPlot().getRenderer().setSeriesStroke(seriesCounter, new BasicStroke(2.3f));
+                seriesCounter++;
                 /*----- добавлено отображение связей между дорогами---*/
                // осторожно! быдлокод!!!
                 double[][] connectionVisualViewData  = new double[2][2];
-                double connectionStartX=series[0][1];
-                double connectionStartY=series[1][1];
+                connectionVisualViewData[0][0]=series[0][1];
+                connectionVisualViewData[1][0]=series[1][1];
                 if (aHighway.getFrontHighways() != null)
                 {   // если есть присоединенные дороги спереди
                     for(HighwayConnection frontHighwayConnection : aHighway.getFrontHighways())
@@ -489,36 +509,22 @@ public class MainFrame extends javax.swing.JFrame {
                         {   // ищем присоединенную дорогу по id
                            if (connectedHighway.getHighwayId() != frontHighwayConnection.getHighwayId())
                                continue;
-
-                           connectionVisualViewData[0][0]=connectionStartX;
-                           connectionVisualViewData[1][0]=connectionStartY;
                            connectionVisualViewData[0][1]=connectedHighway.getStartX();
                            connectionVisualViewData[1][1]=connectedHighway.getStartY();
                            break;
                         }
-                        xyd.addSeries("FrontConnection" + aHighway.getHighwayId(), connectionVisualViewData);
+                        double[][] connectionDataAdd = new double[2][2];
+                        connectionDataAdd[0][0]=connectionVisualViewData[0][0];
+                        connectionDataAdd[0][1]=connectionVisualViewData[0][1];
+                        connectionDataAdd[1][0]=connectionVisualViewData[1][0];
+                        connectionDataAdd[1][1]=connectionVisualViewData[1][1];
+                        xyd.addSeries("FrontConnection" + aHighway.getHighwayId(), connectionDataAdd);
+                            /*Устанавливаем параметры отображения серии*/
+                        prevChart.getXYPlot().getRenderer().setSeriesPaint(seriesCounter, colorOfSameSeries);
+                        prevChart.getXYPlot().getRenderer().setSeriesStroke(seriesCounter, new BasicStroke(1f));
+                        seriesCounter++;
                     }
                 }
-                
-                if (aHighway.getRightHighways() != null)
-                {   // если есть присоединенные дороги справа
-                    for(HighwayConnection rightHighwayConnection : aHighway.getRightHighways())
-                    {   // для каждой присоединенной дороги справа
-                        for (Highway connectedHighway : proj.getHighways())
-                        {   // ищем присоединенную дорогу по id
-                           if (connectedHighway.getHighwayId() != rightHighwayConnection.getHighwayId())
-                               continue;
-                           
-                           connectionVisualViewData[0][0]=connectionStartX;
-                           connectionVisualViewData[1][0]=connectionStartY;
-                           connectionVisualViewData[0][1]=connectedHighway.getStartX();
-                           connectionVisualViewData[1][1]=connectedHighway.getStartY();
-                           break;
-                        }
-                        xyd.addSeries("RightConnection" + aHighway.getHighwayId(), connectionVisualViewData);
-                    }
-                }
-
                 
                 if (aHighway.getLeftHighways() != null)
                 {   // если есть присоединенные дороги слева
@@ -528,21 +534,51 @@ public class MainFrame extends javax.swing.JFrame {
                         {   // ищем присоединенную дорогу по id
                            if (connectedHighway.getHighwayId() != leftHighwayConnection.getHighwayId())
                                continue;
-
-                           connectionVisualViewData[0][0]=connectionStartX;
-                           connectionVisualViewData[1][0]=connectionStartY;
                            connectionVisualViewData[0][1]=connectedHighway.getStartX();
                            connectionVisualViewData[1][1]=connectedHighway.getStartY();
                            break;
                         }
-                        xyd.addSeries("LeftConnection" + aHighway.getHighwayId(), connectionVisualViewData);
+                        double[][] connectionDataAdd = new double[2][2];
+                        connectionDataAdd[0][0]=connectionVisualViewData[0][0];
+                        connectionDataAdd[0][1]=connectionVisualViewData[0][1];
+                        connectionDataAdd[1][0]=connectionVisualViewData[1][0];
+                        connectionDataAdd[1][1]=connectionVisualViewData[1][1];
+                        xyd.addSeries("LeftConnection" + aHighway.getHighwayId(), connectionDataAdd);
+                            /*Устанавливаем параметры отображения серии*/
+                        prevChart.getXYPlot().getRenderer().setSeriesPaint(seriesCounter, colorOfSameSeries);
+                        prevChart.getXYPlot().getRenderer().setSeriesStroke(seriesCounter, new BasicStroke(1f));
+                        seriesCounter++;
                     }
                 }
-            
+
+                if (aHighway.getRightHighways() != null)
+                {   // если есть присоединенные дороги справа
+                    for(HighwayConnection rightHighwayConnection : aHighway.getRightHighways())
+                    {   // для каждой присоединенной дороги справа
+                        for (Highway connectedHighway : proj.getHighways())
+                        {   // ищем присоединенную дорогу по id
+                           if (connectedHighway.getHighwayId() != rightHighwayConnection.getHighwayId())
+                               continue;
+                           connectionVisualViewData[0][1]=connectedHighway.getStartX();
+                           connectionVisualViewData[1][1]=connectedHighway.getStartY();
+                           break;
+                        }
+                        double[][] connectionDataAdd = new double[2][2];
+                        connectionDataAdd[0][0]=connectionVisualViewData[0][0];
+                        connectionDataAdd[0][1]=connectionVisualViewData[0][1];
+                        connectionDataAdd[1][0]=connectionVisualViewData[1][0];
+                        connectionDataAdd[1][1]=connectionVisualViewData[1][1];
+                        xyd.addSeries("RightConnection" + aHighway.getHighwayId(), connectionVisualViewData);
+                            /*Устанавливаем параметры отображения серии*/
+                        prevChart.getXYPlot().getRenderer().setSeriesPaint(seriesCounter, colorOfSameSeries);
+                        prevChart.getXYPlot().getRenderer().setSeriesStroke(seriesCounter, new BasicStroke(1f));
+                        seriesCounter++;
+                    }
+                }
             }
 
         } catch (Exception ex) {
-            ex.printStackTrace();
+            JOptionPane.showMessageDialog(this, "Error occured! Check XML file!");
         }
     }//GEN-LAST:event_loadHighwayDataMenuItemActionPerformed
 
