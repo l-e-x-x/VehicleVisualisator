@@ -458,7 +458,7 @@ public class MainFrame extends javax.swing.JFrame {
 
             for (Highway aHighway : proj.getHighways())
             {
-                Color colorOfSameSeries=Color.getHSBColor(rand.nextFloat(), 1.0f, 0.7f);
+                Color colorOfSameSeries=Color.getHSBColor(rand.nextFloat(), 0.5f+rand.nextFloat()/2f, 0.7f);
                 double[][] series = new double[2][2];
                 series[0][0] = aHighway.getStartX();
                 series[1][0] = aHighway.getStartY();
