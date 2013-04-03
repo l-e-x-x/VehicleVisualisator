@@ -45,6 +45,7 @@ import org.jfree.chart.annotations.XYTextAnnotation;
 import org.jfree.chart.axis.ValueAxis;
 import org.jfree.chart.labels.XYToolTipGenerator;
 import org.jfree.chart.plot.PlotOrientation;
+import org.jfree.chart.plot.SeriesRenderingOrder;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
 import org.jfree.data.xy.AbstractXYDataset;
@@ -65,7 +66,7 @@ public class MainFrame extends javax.swing.JFrame {
     final private AtomicBoolean paused;
     private Thread renderThread;
     File highwayDataFile = null;
-  
+    File vehicleDataFile = null;
     /** Creates new form MainFrame */
     public MainFrame() {
         speedupFactor = new AtomicInteger(1);
@@ -327,14 +328,17 @@ public class MainFrame extends javax.swing.JFrame {
         }
 
         JFileChooser chooser = new JFileChooser();
-        chooser.setCurrentDirectory(new File("."));
+        if (vehicleDataFile != null)
+            chooser.setCurrentDirectory(vehicleDataFile);
+        else
+            chooser.setCurrentDirectory(new File("."));
         int result = chooser.showOpenDialog(this);
         if (result != JFileChooser.APPROVE_OPTION) {
             return;
         }
         resetButtonActionPerformed(null);
-        File selectedFile = chooser.getSelectedFile();
-        DBManager.INSTANCE.loadVehicleData(selectedFile.getAbsolutePath());
+        vehicleDataFile=chooser.getSelectedFile();
+        DBManager.INSTANCE.loadVehicleData(vehicleDataFile.getAbsolutePath());
 
        // updateChartRanges();
 
@@ -431,6 +435,9 @@ public class MainFrame extends javax.swing.JFrame {
         }
         File selectedFile = chooser.getSelectedFile();
         highwayDataFile = selectedFile;
+        
+        Font roadAnnotationFont = new Font("SansSerif", 1, 8);
+        Font laneAnnotationFont = new Font("SansSerif", 0, 7);
         try {
                 /*Удаляем все аннотации (подписи), если они есть*/
             XYTextAnnotation xytextannotation = null;
@@ -439,9 +446,6 @@ public class MainFrame extends javax.swing.JFrame {
                 /*парсим XML - создаем проект HighwayProject proj*/
             HighwayProject proj = (HighwayProject) HighwayProject.xs.fromXML(new FileInputStream(selectedFile));
             DefaultXYDataset xyd = (DefaultXYDataset) prevChart.getXYPlot().getDataset();
-
-            Font roadAnnotationFont = new Font("SansSerif", 1, 8);
-            Font laneAnnotationFont = new Font("SansSerif", 0, 7);
             while (xyd.getSeriesCount() != 0) // removing series
                 xyd.removeSeries(xyd.getSeriesKey(0));
 
@@ -450,7 +454,7 @@ public class MainFrame extends javax.swing.JFrame {
 
             for (Highway aHighway : proj.getHighways())
             {
-                Color colorOfSameSeries=Color.getHSBColor(rand.nextFloat(), 0.5f+rand.nextFloat()/2f, 0.7f);
+                Color colorOfSameSeries=Color.getHSBColor(rand.nextFloat(), 0.3f+rand.nextFloat()/3f, 0.7f);
                 double[][] series = new double[2][2];
                 series[0][0] = aHighway.getStartX();
                 series[1][0] = aHighway.getStartY();
