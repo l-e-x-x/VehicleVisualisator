@@ -18,8 +18,8 @@ import bradley.dupont.odu.edu.vanet.ns3.dto.highway.HighwayProject;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Font;
-import java.awt.Stroke;
 import java.awt.geom.Point2D;
+import java.awt.geom.Rectangle2D;
 import java.io.File;
 import java.io.FileInputStream;
 import java.sql.ResultSet;
@@ -46,6 +46,7 @@ import org.jfree.chart.axis.ValueAxis;
 import org.jfree.chart.labels.XYToolTipGenerator;
 import org.jfree.chart.plot.PlotOrientation;
 import org.jfree.chart.plot.XYPlot;
+import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
 import org.jfree.data.xy.AbstractXYDataset;
 import org.jfree.data.xy.DefaultXYDataset;
 import org.jfree.data.xy.XYDataset;
@@ -57,14 +58,14 @@ import org.jfree.ui.TextAnchor;
  */
 public class MainFrame extends javax.swing.JFrame {
 
-    private JFreeChart chart;
+    //private JFreeChart chart;
     private JFreeChart prevChart;
     private DynamicXYDataset dataset;
     private AtomicInteger speedupFactor;
     final private AtomicBoolean paused;
     private Thread renderThread;
     File highwayDataFile = null;
-
+  
     /** Creates new form MainFrame */
     public MainFrame() {
         speedupFactor = new AtomicInteger(1);
@@ -76,16 +77,21 @@ public class MainFrame extends javax.swing.JFrame {
 
     private void initChart() {
         dataset = new DynamicXYDataset();
-        chart = ChartFactory.createScatterPlot(null, "X", "Y", dataset, PlotOrientation.VERTICAL, false, true, false);
-        XYPlot plot = chart.getXYPlot();
-        plot.getRenderer().setBaseToolTipGenerator(new ToolTipGenerator());
+        //chart = ChartFactory.createScatterPlot(null, "X", "Y", dataset, PlotOrientation.VERTICAL, false, true, false);
+        //XYPlot plot = chart.getXYPlot();
+        //plot.getRenderer().setBaseToolTipGenerator(new ToolTipGenerator());
 
         DefaultXYDataset xys = new DefaultXYDataset();
         prevChart = ChartFactory.createXYLineChart(null, "X", "Y", xys, PlotOrientation.VERTICAL, false, true, false);
-        //final VectorRenderer renderer = new VectorRenderer();
-        //prevChart.getXYPlot().setRenderer(renderer);
+        prevChart.getXYPlot().setDataset(1, dataset);
+        XYLineAndShapeRenderer xylineandshaperenderer = new XYLineAndShapeRenderer();
+        xylineandshaperenderer.setSeriesLinesVisible(0, false);
+        xylineandshaperenderer.setSeriesShapesVisible(0, true);
+        xylineandshaperenderer.setSeriesShape(0, new Rectangle2D.Double(-3, -3, 6, 6));
+        xylineandshaperenderer.setSeriesPaint(0, Color.GREEN);
+        prevChart.getXYPlot().setRenderer(1, xylineandshaperenderer);
         prevChart.getPlot().setBackgroundPaint(Color.BLACK);
-        updateChartRanges();
+       // updateChartRanges();
     }
 
     /** This method is called from within the constructor to
@@ -105,15 +111,14 @@ public class MainFrame extends javax.swing.JFrame {
         jLabel4 = new javax.swing.JLabel();
         simTimeField = new javax.swing.JFormattedTextField();
         jSplitPane1 = new javax.swing.JSplitPane();
-        jTabbedPane1 = new javax.swing.JTabbedPane();
-        chartPanel = new ChartPanel(chart);
-        tablePanel = new javax.swing.JPanel();
-        tableScrollPanel = new javax.swing.JScrollPane();
-        locationTable = new javax.swing.JTable();
-        previewPanel = new ChartPanel(prevChart);
         jLabel3 = new javax.swing.JLabel();
         jScrollPane1 = new javax.swing.JScrollPane();
         jTable1 = new javax.swing.JTable();
+        jTabbedPane1 = new javax.swing.JTabbedPane();
+        previewPanel = new ChartPanel(prevChart);
+        tablePanel = new javax.swing.JPanel();
+        tableScrollPanel = new javax.swing.JScrollPane();
+        locationTable = new javax.swing.JTable();
         jMenuBar1 = new javax.swing.JMenuBar();
         fileMenu = new javax.swing.JMenu();
         loadNewDataMenuItem = new javax.swing.JMenuItem();
@@ -159,18 +164,33 @@ public class MainFrame extends javax.swing.JFrame {
             }
         });
 
-        javax.swing.GroupLayout chartPanelLayout = new javax.swing.GroupLayout(chartPanel);
-        chartPanel.setLayout(chartPanelLayout);
-        chartPanelLayout.setHorizontalGroup(
-            chartPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 468, Short.MAX_VALUE)
+        jLabel3.setText("Messages");
+        jSplitPane1.setRightComponent(jLabel3);
+
+        jTable1.setModel(new javax.swing.table.DefaultTableModel(
+            new Object [][] {
+
+            },
+            new String [] {
+                "Sim Time (Sec)", "Vehicle ID", "Vehicle Pos", "Message", "User Index"
+            }
+        ));
+        jScrollPane1.setViewportView(jTable1);
+
+        jSplitPane1.setRightComponent(jScrollPane1);
+
+        javax.swing.GroupLayout previewPanelLayout = new javax.swing.GroupLayout(previewPanel);
+        previewPanel.setLayout(previewPanelLayout);
+        previewPanelLayout.setHorizontalGroup(
+            previewPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGap(0, 116, Short.MAX_VALUE)
         );
-        chartPanelLayout.setVerticalGroup(
-            chartPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+        previewPanelLayout.setVerticalGroup(
+            previewPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGap(0, 452, Short.MAX_VALUE)
         );
 
-        jTabbedPane1.addTab("Visual", chartPanel);
+        jTabbedPane1.addTab("Visual", previewPanel);
 
         locationTable.setModel(new javax.swing.table.DefaultTableModel(
             new Object [][] {
@@ -204,7 +224,7 @@ public class MainFrame extends javax.swing.JFrame {
         tablePanel.setLayout(tablePanelLayout);
         tablePanelLayout.setHorizontalGroup(
             tablePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addComponent(tableScrollPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 468, Short.MAX_VALUE)
+            .addComponent(tableScrollPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 116, Short.MAX_VALUE)
         );
         tablePanelLayout.setVerticalGroup(
             tablePanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -213,35 +233,7 @@ public class MainFrame extends javax.swing.JFrame {
 
         jTabbedPane1.addTab("Tabular", tablePanel);
 
-        javax.swing.GroupLayout previewPanelLayout = new javax.swing.GroupLayout(previewPanel);
-        previewPanel.setLayout(previewPanelLayout);
-        previewPanelLayout.setHorizontalGroup(
-            previewPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 468, Short.MAX_VALUE)
-        );
-        previewPanelLayout.setVerticalGroup(
-            previewPanelLayout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 452, Short.MAX_VALUE)
-        );
-
-        jTabbedPane1.addTab("Highway Preview", previewPanel);
-
         jSplitPane1.setLeftComponent(jTabbedPane1);
-
-        jLabel3.setText("Messages");
-        jSplitPane1.setRightComponent(jLabel3);
-
-        jTable1.setModel(new javax.swing.table.DefaultTableModel(
-            new Object [][] {
-
-            },
-            new String [] {
-                "Sim Time (Sec)", "Vehicle ID", "Vehicle Pos", "Message", "User Index"
-            }
-        ));
-        jScrollPane1.setViewportView(jTable1);
-
-        jSplitPane1.setRightComponent(jScrollPane1);
 
         fileMenu.setText("File");
 
@@ -322,7 +314,7 @@ public class MainFrame extends javax.swing.JFrame {
                     .addComponent(jLabel4)
                     .addComponent(simTimeField, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jSplitPane1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                .addComponent(jSplitPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 499, Short.MAX_VALUE)
                 .addContainerGap())
         );
 
@@ -344,7 +336,7 @@ public class MainFrame extends javax.swing.JFrame {
         File selectedFile = chooser.getSelectedFile();
         DBManager.INSTANCE.loadVehicleData(selectedFile.getAbsolutePath());
 
-        updateChartRanges();
+       // updateChartRanges();
 
         JOptionPane.showMessageDialog(this, "Complete");
     }//GEN-LAST:event_loadNewDataMenuItemActionPerformed
@@ -397,10 +389,10 @@ public class MainFrame extends javax.swing.JFrame {
             dataset.addPoints(Collections.EMPTY_LIST);
             dataset.afterBatch();
             simTimeField.setValue(0.0);
-            updateChartRanges();
+          //  updateChartRanges();
             startPauseButton.setText("Start");
             ((DefaultTableModel) locationTable.getModel()).setRowCount(0);
-            ((ChartPanel) chartPanel).repaint();
+            //((ChartPanel) chartPanel).repaint();
         }
     }//GEN-LAST:event_resetButtonActionPerformed
 
@@ -453,7 +445,6 @@ public class MainFrame extends javax.swing.JFrame {
             while (xyd.getSeriesCount() != 0) // removing series
                 xyd.removeSeries(xyd.getSeriesKey(0));
 
-
             int seriesCounter=0; // счетчик серий
             Random rand = new Random();
 
@@ -501,15 +492,15 @@ public class MainFrame extends javax.swing.JFrame {
                 double highwayRightLaneXOffset = RotateXFactor*(highwayWidth/2-highwayLaneWidth/2);
                 double highwayRightLaneYOffset = RotateYFactor*(highwayWidth/2-highwayLaneWidth/2);
                 double[][] laneSeries = new double[2][2]; // создаем серию для первой полосы
-                /* первая полоса смещена относительно центра 
+                /* первая полоса смещена налево относительно центра
                    дороги на highwayRightLaneXOffset по X и
                              highwayRightLaneYOffset по Y
                    ниже - вычисление смещений точек начала и
                    конца первой полосы от центра дороги*/
-                laneSeries[0][0] = series[0][0]+highwayRightLaneXOffset;
-                laneSeries[0][1] = series[0][1]+highwayRightLaneXOffset;
-                laneSeries[1][0] = series[1][0]+highwayRightLaneYOffset;
-                laneSeries[1][1] = series[1][1]+highwayRightLaneYOffset;
+                laneSeries[0][0] = series[0][0]-highwayRightLaneXOffset;
+                laneSeries[0][1] = series[0][1]-highwayRightLaneXOffset;
+                laneSeries[1][0] = series[1][0]-highwayRightLaneYOffset;
+                laneSeries[1][1] = series[1][1]-highwayRightLaneYOffset;
                 for (Integer laneCntr=0; laneCntr < aHighway.getNumberOfLanes(); laneCntr++)
                 {
                     String laneAnnotationStr=annotationStr+":"+laneCntr.toString();
@@ -517,15 +508,16 @@ public class MainFrame extends javax.swing.JFrame {
                     prevChart.getXYPlot().getRenderer().setSeriesPaint(seriesCounter, colorOfSameSeries);
                     prevChart.getXYPlot().getRenderer().setSeriesStroke(seriesCounter, new BasicStroke(2.3f));
                     seriesCounter++;
+
                     double[][] nextLaneSeries = new double[2][2]; // создаем серию для следующей полосы
                     /*следующая полоса смещена относительно предыдущей на 
                      RotateXFactor*highwayLaneWidth по X и
                      RotateYFactor*highwayLaneWidth по Y 
                      ниже - вычисление смещений точек начала и конца полосы*/
-                    nextLaneSeries[0][0] = laneSeries[0][0]-RotateXFactor*highwayLaneWidth;
-                    nextLaneSeries[0][1] = laneSeries[0][1]-RotateXFactor*highwayLaneWidth;
-                    nextLaneSeries[1][0] = laneSeries[1][0]-RotateYFactor*highwayLaneWidth;
-                    nextLaneSeries[1][1] = laneSeries[1][1]-RotateYFactor*highwayLaneWidth;
+                    nextLaneSeries[0][0] = laneSeries[0][0]+RotateXFactor*highwayLaneWidth;
+                    nextLaneSeries[0][1] = laneSeries[0][1]+RotateXFactor*highwayLaneWidth;
+                    nextLaneSeries[1][0] = laneSeries[1][0]+RotateYFactor*highwayLaneWidth;
+                    nextLaneSeries[1][1] = laneSeries[1][1]+RotateYFactor*highwayLaneWidth;
                     if (aHighway.getNumberOfLanes() == 1)
                         break; // если полоса одна - не добавляем подписи для номеров полос
                         /*добавление подписей номеров полос для дороги*/
@@ -537,7 +529,6 @@ public class MainFrame extends javax.swing.JFrame {
                     xytextannotation.setFont(laneAnnotationFont);
                     xytextannotation.setTextAnchor(TextAnchor.HALF_ASCENT_LEFT);
                     prevChart.getXYPlot().addAnnotation(xytextannotation);
-
                     laneSeries=nextLaneSeries;
                 }
 
@@ -654,7 +645,7 @@ public class MainFrame extends javax.swing.JFrame {
         }
     }
 
-    private void updateChartRanges() {
+    /*private void updateChartRanges() {
         if (DBManager.INSTANCE.getMaxX() == Double.NEGATIVE_INFINITY) {
             return;
         }
@@ -668,7 +659,7 @@ public class MainFrame extends javax.swing.JFrame {
         axis.setLowerBound(DBManager.INSTANCE.getMinY() - buffer);
         axis.setUpperBound(DBManager.INSTANCE.getMaxY() + buffer);
     }
-
+*/
     private class DynamicXYDataset extends AbstractXYDataset {
 
         private Map<Integer, Point2D.Double> vehicleToPoint = new HashMap<Integer, Point2D.Double>();
@@ -787,7 +778,7 @@ public class MainFrame extends javax.swing.JFrame {
                         model.addRow(row);
                     }
 
-                    ((ChartPanel) chartPanel).repaint();
+                 //   ((ChartPanel) chartPanel).repaint();
 
                     simTimeField.setValue(previousTime / 1000000000.0);
 
@@ -841,7 +832,6 @@ public class MainFrame extends javax.swing.JFrame {
         });
     }
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JPanel chartPanel;
     private javax.swing.JMenu fileMenu;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel2;
