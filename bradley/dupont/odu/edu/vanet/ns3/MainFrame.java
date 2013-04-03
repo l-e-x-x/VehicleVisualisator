@@ -448,7 +448,8 @@ public class MainFrame extends javax.swing.JFrame {
             HighwayProject proj = (HighwayProject) HighwayProject.xs.fromXML(new FileInputStream(selectedFile));
             DefaultXYDataset xyd = (DefaultXYDataset) prevChart.getXYPlot().getDataset();
 
-            Font font = new Font("SansSerif", 0, 8);
+            Font roadAnnotationFont = new Font("SansSerif", 1, 8);
+            Font laneAnnotationFont = new Font("SansSerif", 0, 7);
             while (xyd.getSeriesCount() != 0) // removing series
                 xyd.removeSeries(xyd.getSeriesKey(0));
 
@@ -488,14 +489,58 @@ public class MainFrame extends javax.swing.JFrame {
                 xytextannotation = new XYTextAnnotation(annotationStr, annotationX,annotationY);
                 xytextannotation.setPaint(Color.WHITE);
                 xytextannotation.setBackgroundPaint(Color.BLACK);
-                xytextannotation.setFont(font);
+                xytextannotation.setFont(roadAnnotationFont);
 		xytextannotation.setTextAnchor(TextAnchor.HALF_ASCENT_LEFT);
 		prevChart.getXYPlot().addAnnotation(xytextannotation);
+
                     /*Series add*/
-                xyd.addSeries(annotationStr, series);
-                prevChart.getXYPlot().getRenderer().setSeriesPaint(seriesCounter, colorOfSameSeries);
-                prevChart.getXYPlot().getRenderer().setSeriesStroke(seriesCounter, new BasicStroke(2.3f));
-                seriesCounter++;
+                double highwayLaneWidth = aHighway.getLaneWidth();
+                double highwayWidth = highwayLaneWidth*aHighway.getNumberOfLanes();
+                double RotateXFactor = Math.cos(direction-Math.PI/2); // множитель поворота относительно X
+                double RotateYFactor = Math.sin(direction-Math.PI/2); // множитель поворота относительно Y
+                double highwayRightLaneXOffset = RotateXFactor*(highwayWidth/2-highwayLaneWidth/2);
+                double highwayRightLaneYOffset = RotateYFactor*(highwayWidth/2-highwayLaneWidth/2);
+                double[][] laneSeries = new double[2][2]; // создаем серию для первой полосы
+                /* первая полоса смещена относительно центра 
+                   дороги на highwayRightLaneXOffset по X и
+                             highwayRightLaneYOffset по Y
+                   ниже - вычисление смещений точек начала и
+                   конца первой полосы от центра дороги*/
+                laneSeries[0][0] = series[0][0]+highwayRightLaneXOffset;
+                laneSeries[0][1] = series[0][1]+highwayRightLaneXOffset;
+                laneSeries[1][0] = series[1][0]+highwayRightLaneYOffset;
+                laneSeries[1][1] = series[1][1]+highwayRightLaneYOffset;
+                for (Integer laneCntr=0; laneCntr < aHighway.getNumberOfLanes(); laneCntr++)
+                {
+                    String laneAnnotationStr=annotationStr+":"+laneCntr.toString();
+                    xyd.addSeries(laneAnnotationStr, laneSeries);
+                    prevChart.getXYPlot().getRenderer().setSeriesPaint(seriesCounter, colorOfSameSeries);
+                    prevChart.getXYPlot().getRenderer().setSeriesStroke(seriesCounter, new BasicStroke(2.3f));
+                    seriesCounter++;
+                    double[][] nextLaneSeries = new double[2][2]; // создаем серию для следующей полосы
+                    /*следующая полоса смещена относительно предыдущей на 
+                     RotateXFactor*highwayLaneWidth по X и
+                     RotateYFactor*highwayLaneWidth по Y 
+                     ниже - вычисление смещений точек начала и конца полосы*/
+                    nextLaneSeries[0][0] = laneSeries[0][0]-RotateXFactor*highwayLaneWidth;
+                    nextLaneSeries[0][1] = laneSeries[0][1]-RotateXFactor*highwayLaneWidth;
+                    nextLaneSeries[1][0] = laneSeries[1][0]-RotateYFactor*highwayLaneWidth;
+                    nextLaneSeries[1][1] = laneSeries[1][1]-RotateYFactor*highwayLaneWidth;
+                    if (aHighway.getNumberOfLanes() == 1)
+                        break; // если полоса одна - не добавляем подписи для номеров полос
+                        /*добавление подписей номеров полос для дороги*/
+                    double laneAnnotationX = laneSeries[0][0] + changeX/3;
+                    double laneAnnotationY = laneSeries[1][0] + changeY/3;
+                    xytextannotation = new XYTextAnnotation(laneAnnotationStr, laneAnnotationX,laneAnnotationY);
+                    xytextannotation.setPaint(Color.WHITE);
+                    xytextannotation.setBackgroundPaint(Color.BLACK);
+                    xytextannotation.setFont(laneAnnotationFont);
+                    xytextannotation.setTextAnchor(TextAnchor.HALF_ASCENT_LEFT);
+                    prevChart.getXYPlot().addAnnotation(xytextannotation);
+
+                    laneSeries=nextLaneSeries;
+                }
+
                 /*----- добавлено отображение связей между дорогами---*/
                // осторожно! быдлокод!!!
                 double[][] connectionVisualViewData  = new double[2][2];
